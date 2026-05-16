@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Técnico — Mat. 31.973 / Colarcoverde 2 / Arcoverde-PE</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+<style>
+  :root {
+    --ag-primary: #1F3A5F;
+    --ag-primary-light: #2c5283;
+    --ag-secondary: #7BAB3E;
+    --ag-amber: #E8B23A;
+    --ag-red: #C44545;
+    --paper: #FAFAF7;
+    --card: #FFFFFF;
+    --ink: #1A1A1A;
+    --ink-2: #6B6B6B;
+    --ink-3: #9a9a9a;
+    --rule: #E5E2DA;
+    --rule-strong: #c9c5b8;
+    --tint: #F2F0E8;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--ag-primary); }
+
+  /* ----- Layout ----- */
+  .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+  aside.sidebar {
+    position: sticky; top: 0; align-self: start;
+    height: 100vh; overflow-y: auto;
+    background: #fff;
+    border-right: 1px solid var(--rule);
+    padding: 22px 18px 28px;
+  }
+  main.content { min-width: 0; padding: 0; }
+
+  /* ----- Sidebar ----- */
+  .brand {
+    display: flex; align-items: center; gap: 12px;
+    padding-bottom: 16px; border-bottom: 1px solid var(--rule); margin-bottom: 16px;
+  }
+  .brand .logo {
+    width: 44px; height: 44px; border-radius: 8px;
+    background: var(--ag-primary); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 17px; letter-spacing: 0.5px;
+    font-family: var(--mono);
+  }
+  .brand .b-text .b-name { font-weight: 700; font-size: 15px; line-height: 1.1; }
+  .brand .b-text .b-sub  { font-size: 11px; color: var(--ink-2); font-family: var(--mono); margin-top: 2px; }
+
+  .nav-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--ink-3); margin: 14px 4px 8px; font-weight: 600; }
+  nav.snav { display: flex; flex-direction: column; gap: 2px; }
+  nav.snav a {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 9px 10px; border-radius: 6px;
+    text-decoration: none; color: var(--ink);
+    font-size: 13.5px; line-height: 1.25;
+    border-left: 2px solid transparent;
+    transition: background .15s, border-color .15s;
+  }
+  nav.snav a:hover { background: var(--tint); }
+  nav.snav a.active { background: var(--tint); border-left-color: var(--ag-primary); font-weight: 600; }
+  nav.snav a .num { color: var(--ink-3); font-family: var(--mono); font-size: 11px; min-width: 18px; }
+
+  .side-meta {
+    margin-top: 18px; padding: 12px;
+    background: var(--tint); border-radius: 8px;
+    font-size: 12px; color: var(--ink-2); line-height: 1.45;
+  }
+  .side-meta strong { color: var(--ink); display: block; font-size: 12.5px; margin-bottom: 2px; }
+  .side-meta .countdown {
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rule-strong);
+    font-family: var(--mono); font-size: 11.5px;
+  }
+  .side-meta .countdown b { color: var(--ag-red); }
+
+  /* ----- Header ----- */
+  header.top {
+    background: #fff;
+    border-bottom: 1px solid var(--rule);
+    padding: 22px 40px 20px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  }
+  header.top h1 {
+    margin: 0; font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em;
+  }
+  header.top .case {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin-top: 4px;
+  }
+  header.top .meta-right {
+    text-align: right; font-size: 12px; color: var(--ink-2); font-family: var(--mono); line-height: 1.5;
+  }
+  header.top .meta-right .pill {
+    display: inline-block; padding: 3px 8px; border-radius: 999px;
+    background: var(--tint); color: var(--ag-primary); font-weight: 600; font-size: 11px;
+  }
+
+  /* ----- Sections ----- */
+  section.s {
+    padding: 48px 40px 36px;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 8px;
+  }
+  section.s:last-child { border-bottom: none; }
+  section.s .sec-eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--ag-primary); font-weight: 600; margin-bottom: 6px;
+  }
+  section.s h2 {
+    margin: 0 0 6px; font-size: 24px; font-weight: 700; letter-spacing: -0.005em;
+  }
+  section.s .sec-lede {
+    font-size: 15px; color: var(--ink-2); max-width: 78ch; margin: 0 0 22px;
+  }
+  h3 { font-size: 18px; margin: 0 0 8px; font-weight: 600; }
+  h4 { font-size: 13px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-2); font-weight: 600; }
+
+  /* ----- KPI cards ----- */
+  .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .kpi {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 14px 14px 12px; min-height: 100px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .kpi .label { font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.25; }
+  .kpi .value { font-size: 22px; font-weight: 700; font-family: var(--mono); color: var(--ag-primary); margin-top: 6px; line-height: 1; }
+  .kpi .delta { font-size: 11px; color: var(--ink-2); margin-top: 4px; font-family: var(--mono); }
+  .kpi .delta.pos { color: #2e7d32; }
+  .kpi .delta.neg { color: var(--ag-red); }
+  .kpi .delta.amber { color: #b07e1c; }
+
+  /* ----- Tese ----- */
+  .tese {
+    margin-top: 22px; padding: 18px 20px;
+    background: linear-gradient(180deg, #fff 0%, var(--tint) 100%);
+    border: 1px solid var(--rule); border-left: 4px solid var(--ag-primary);
+    border-radius: 10px;
+  }
+  .tese h4 { color: var(--ag-primary); margin-bottom: 8px; }
+  .tese p { margin: 0; font-size: 15.5px; line-height: 1.55; max-width: 90ch; }
+  .tese p strong { color: var(--ag-primary); }
+
+  .tese-frentes {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin-top: 14px;
+  }
+  .frente {
+    background: #fff; border: 1px solid var(--rule); border-top: 3px solid var(--ag-primary);
+    border-radius: 8px; padding: 14px 14px 12px; position: relative;
+  }
+  .frente-num {
+    position: absolute; top: 10px; right: 12px;
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    color: var(--ag-primary); background: var(--tint); padding: 2px 6px; border-radius: 3px;
+  }
+  .frente h5 { margin: 0 0 8px; font-size: 13.5px; font-weight: 600; padding-right: 32px; line-height: 1.3; }
+  .frente p { margin: 0 0 6px; font-size: 12.5px; color: var(--ink); line-height: 1.45; }
+  .frente p:last-child { margin-bottom: 0; }
+  .frente .frente-meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--rule); }
+  .frente .badge { font-size: 9.5px; padding: 1px 5px; }
+  @media (max-width: 1100px) { .tese-frentes { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ----- Path cards ----- */
+  .paths { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .path {
+    background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px;
+  }
+  .path .tag { font-size: 10px; font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+  .path.adopted { border-left: 4px solid var(--ag-secondary); }
+  .path.adopted .tag { color: #4f7c1f; }
+  .path.discarded { border-left: 4px solid var(--ink-3); opacity: .85; }
+  .path.discarded .tag { color: var(--ink-2); }
+  .path h5 { margin: 6px 0 4px; font-size: 14px; font-weight: 600; }
+  .path p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+
+  /* ----- Map ----- */
+  .map-wrap {
+    border: 1px solid var(--rule); border-radius: 10px; overflow: hidden;
+    background: #fff;
+    display: grid; grid-template-columns: 1fr 280px; gap: 0;
+  }
+  #map { height: 600px; width: 100%; background: #eef2ee; }
+  .map-side {
+    background: #fff; border-left: 1px solid var(--rule);
+    padding: 14px 14px 16px;
+    font-size: 12.5px;
+    overflow-y: auto; max-height: 600px;
+  }
+  .map-side h4 { margin-bottom: 8px; }
+  .layer-row {
+    display: flex; align-items: flex-start; gap: 8px; padding: 6px 4px;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .layer-row:last-child { border-bottom: none; }
+  .layer-row label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; flex: 1; min-width: 0; }
+  .layer-row label > span:last-child { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .layer-row .swatch { margin-top: 3px; }
+  .layer-row input[type=checkbox] { accent-color: var(--ag-primary); }
+  .swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #00000022; flex-shrink: 0; }
+  .layer-name { font-size: 12.5px; line-height: 1.25; }
+  .layer-meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); }
+  .basemap-toggle {
+    display: flex; gap: 4px; padding: 4px;
+    background: var(--tint); border-radius: 6px; margin-bottom: 12px;
+  }
+  .basemap-toggle button {
+    flex: 1; padding: 6px 8px; font-size: 11px; border: none; background: transparent;
+    border-radius: 4px; cursor: pointer; font-family: inherit; color: var(--ink-2);
+  }
+  .basemap-toggle button.active { background: #fff; color: var(--ag-primary); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+
+  .leaflet-popup-content { font-family: inherit; font-size: 12.5px; }
+  .leaflet-popup-content .pop-title { font-weight: 700; color: var(--ag-primary); margin-bottom: 4px; }
+  .leaflet-popup-content .pop-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+  .badge {
+    display: inline-block; padding: 1px 6px; border-radius: 999px;
+    font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; font-weight: 600;
+  }
+  .badge.green { background: #e7f1d7; color: #4f7c1f; }
+  .badge.amber { background: #fbeed3; color: #8b6312; }
+  .badge.red   { background: #f6dada; color: #92302f; }
+  .badge.gray  { background: #ececec; color: #555; }
+
+  /* ----- Timeline ----- */
+  .timeline { position: relative; padding-left: 28px; margin-top: 8px; }
+  .timeline::before {
+    content: ""; position: absolute; left: 8px; top: 6px; bottom: 6px;
+    width: 2px; background: var(--rule-strong);
+  }
+  .tl-node {
+    position: relative; padding: 12px 14px; margin-bottom: 10px;
+    background: #fff; border: 1px solid var(--rule); border-radius: 8px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .tl-node:hover { border-color: var(--ag-primary-light); box-shadow: 0 2px 8px rgba(31,58,95,.06); }
+  .tl-node::before {
+    content: ""; position: absolute; left: -24px; top: 18px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--ag-primary);
+  }
+  .tl-node.critical::before { background: var(--ag-red); border-color: var(--ag-red); }
+  .tl-node.adopted::before { background: var(--ag-secondary); border-color: var(--ag-secondary); }
+  .tl-date { font-family: var(--mono); font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .tl-title { font-size: 14.5px; font-weight: 600; margin: 2px 0 4px; }
+  .tl-body { font-size: 13px; color: var(--ink-2); display: none; margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--rule); }
+  .tl-node.open .tl-body { display: block; }
+  .tl-body strong { color: var(--ink); }
+
+  /* ----- Findings cards ----- */
+  .findings { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .finding {
+    background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px;
+  }
+  .finding .head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    cursor: pointer;
+  }
+  .finding .label-letter {
+    width: 32px; height: 32px; border-radius: 6px;
+    display: grid; place-items: center;
+    background: var(--ag-primary); color: #fff; font-weight: 700; font-family: var(--mono);
+    flex-shrink: 0;
+  }
+  .finding h3 { font-size: 15px; }
+  .finding .head .toggle { color: var(--ink-3); font-family: var(--mono); font-size: 18px; }
+  .finding .body { display: none; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--ink-2); }
+  .finding.open .body { display: block; }
+  .finding .body p { margin: 0 0 8px; }
+
+  /* Bar chart */
+  .bars { margin-top: 14px; padding: 12px; background: var(--paper); border-radius: 8px; }
+  .bar-row { display: grid; grid-template-columns: 36px 1fr 64px; align-items: center; gap: 6px; padding: 2px 0; font-size: 11px; font-family: var(--mono); }
+  .bar-row .vlbl { color: var(--ag-primary); font-weight: 600; }
+  .bar-row .btrack { background: #e8e6dc; height: 8px; border-radius: 4px; position: relative; }
+  .bar-row .bfill { height: 100%; border-radius: 4px; background: var(--ag-red); }
+  .bar-row .bfill.tol { background: var(--ag-secondary); }
+  .bar-row .bvalue { color: var(--ink-2); text-align: right; }
+  .bar-tol { position: relative; height: 1px; background: transparent; margin: 4px 0 0; }
+  .bar-tol::before {
+    content: "tolerância NBR 17047 — 0,24 m"; font-size: 10px; color: var(--ag-secondary); font-family: var(--mono);
+  }
+
+  /* Mini map */
+  .mini-map { height: 220px; border-radius: 6px; overflow: hidden; border: 1px solid var(--rule); margin-top: 10px; }
+
+  /* ----- Saneadores table ----- */
+  .saneadores {
+    background: #fff; border: 1px solid var(--rule); border-radius: 10px;
+  }
+  .filter-bar {
+    display: flex; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--rule);
+    align-items: center;
+  }
+  .filter-bar .lbl { font-size: 12px; color: var(--ink-2); margin-right: 4px; }
+  .filter-bar button {
+    border: 1px solid var(--rule); background: #fff; padding: 5px 11px;
+    border-radius: 999px; font-size: 12px; cursor: pointer; font-family: inherit;
+    color: var(--ink-2);
+  }
+  .filter-bar button.active { background: var(--ag-primary); color: #fff; border-color: var(--ag-primary); }
+
+  table.acts { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.acts th {
+    text-align: left; padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--ink-2); background: var(--paper); font-weight: 600;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.acts td { padding: 12px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  table.acts tbody tr { cursor: pointer; }
+  table.acts tbody tr:hover { background: var(--tint); }
+  table.acts tbody tr.expanded { background: var(--tint); }
+  table.acts tr.detail-row td {
+    background: #fcfbf6;
+    padding: 14px 14px 16px 60px;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    border-bottom: 2px solid var(--rule);
+  }
+  .greek { font-family: "Times New Roman", serif; font-size: 18px; color: var(--ag-primary); font-weight: 700; }
+
+  .ag-note {
+    margin-top: 18px;
+    background: linear-gradient(180deg, #faf8f1 0%, #f6f1e2 100%);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--ag-primary);
+    border-radius: 8px;
+    padding: 16px 20px 18px;
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 20px;
+  }
+  .ag-note-tag {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--ag-primary);
+    font-weight: 700;
+    font-family: var(--mono);
+    padding-top: 2px;
+  }
+  .ag-note-body p {
+    margin: 0 0 10px 0;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink-2);
+  }
+  .ag-note-body p:last-child { margin-bottom: 0; }
+  .ag-note-body strong { color: var(--ink); font-weight: 600; }
+  .ag-note-body em { font-style: italic; color: var(--ag-primary); }
+
+  /* ----- Confrontantes ----- */
+  .conf-grid { display: grid; grid-template-columns: 1fr 380px; gap: 14px; }
+  .conf-list { background: #fff; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .conf-row { padding: 12px 16px; border-bottom: 1px solid var(--rule); display: flex; align-items: flex-start; gap: 12px; }
+  .conf-row:last-child { border-bottom: none; }
+  .conf-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; border: 2px solid #fff; box-shadow: 0 0 0 1px #0002; }
+  .conf-name { font-weight: 600; font-size: 13.5px; }
+  .conf-meta { font-size: 11.5px; color: var(--ink-2); font-family: var(--mono); margin-top: 2px; }
+  #miniMapConf { height: 360px; border-radius: 10px; border: 1px solid var(--rule); }
+
+  /* ----- Marco normativo ----- */
+  .norm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .norm-chain { display: flex; flex-direction: column; gap: 6px; }
+  .norm-step {
+    background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px;
+    position: relative;
+  }
+  .norm-step .yr { font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+  .norm-step .nm { font-weight: 600; font-size: 14px; margin-top: 2px; }
+  .norm-step .desc { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+  .norm-arrow { text-align: center; color: var(--ink-3); font-size: 14px; line-height: 1; }
+  .norm-step.highlight { border-left: 4px solid var(--ag-primary); }
+  .norm-aside { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 14px 18px; }
+  .norm-aside ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--ink); }
+  .norm-aside ul li { margin-bottom: 4px; }
+  .norm-aside ul li b { color: var(--ag-primary); }
+  .alert-defasagem {
+    margin-top: 14px; background: #fdf6e3; border: 1px solid #e8d49a; border-left: 4px solid var(--ag-amber);
+    padding: 12px 14px; border-radius: 8px; font-size: 12.5px;
+  }
+  .alert-defasagem b { color: #8b6312; }
+
+  /* ----- Dossiê ----- */
+  .pkg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+  /* ----- Status grid (Resposta Nota 271) ----- */
+  .status-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px;
+  }
+  .status-col {
+    background: #fff; border: 1px solid var(--rule); border-radius: 10px;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .status-col.col-ok  { border-top: 3px solid #5e8e3f; }
+  .status-col.col-upd { border-top: 3px solid #c98a2c; }
+  .status-col.col-todo{ border-top: 3px solid #b14a4a; }
+  .status-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--rule); background: #fbfaf6; }
+  .status-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; letter-spacing: 1px; font-family: var(--mono);
+    margin-bottom: 8px;
+  }
+  .status-pill.ok   { background: #e7eedc; color: #3d6629; }
+  .status-pill.upd  { background: #f6ead0; color: #835a18; }
+  .status-pill.todo { background: #f3dada; color: #8a2e2e; }
+  .status-head h3 { margin: 0 0 4px 0; font-size: 14px; color: var(--ink); }
+  .status-sub { margin: 0; font-size: 11.5px; color: var(--ink-2); line-height: 1.45; }
+  .status-list { padding: 8px; flex: 1; }
+  .status-item {
+    padding: 9px 11px; border-radius: 7px; margin-bottom: 6px;
+    background: var(--paper); border: 1px solid transparent;
+  }
+  .status-item:hover { background: #f5f1e6; border-color: var(--rule); }
+  .status-item .si-name { font-size: 12.5px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+  .status-item .si-meta { font-size: 11px; color: var(--ink-2); margin-top: 3px; font-family: var(--mono); }
+  .status-item.kpi-item { background: #fff; border: 1px solid var(--rule); padding: 11px 12px; }
+  .status-item .si-tag {
+    display: inline-block; font-size: 9.5px; font-family: var(--mono); letter-spacing: 0.6px;
+    text-transform: uppercase; padding: 1px 6px; border-radius: 3px; margin-right: 6px;
+    background: #ebe4cf; color: #5a4818;
+  }
+  .status-item .si-tag.greek-tag { background: #efe9d6; color: var(--ag-primary); font-weight: 700; }
+  .pkg-card {
+    background: #fff; border: 1px solid var(--rule); border-radius: 8px;
+    padding: 11px 12px; font-size: 12px;
+  }
+  .pkg-card .nm { font-weight: 600; font-size: 12.5px; line-height: 1.3; }
+  .pkg-card .vr { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); margin-top: 4px; }
+  .pkg-card.new { border-left: 3px solid var(--ag-secondary); }
+  .pkg-card.update { border-left: 3px solid var(--ag-primary); }
+
+  .calib-box {
+    margin-top: 18px;
+    background: linear-gradient(180deg, var(--ag-primary) 0%, #1a3050 100%);
+    color: #f4f1e8; border-radius: 12px; padding: 22px 24px;
+  }
+  .calib-box h4 { color: rgba(255,255,255,.7); margin-bottom: 10px; }
+  .calib-box p { margin: 0; font-size: 14.5px; line-height: 1.55; max-width: 80ch; }
+  .calib-box p strong { color: #fff; }
+
+  /* Footer */
+  footer.foot {
+    padding: 28px 40px 40px; font-size: 11.5px; color: var(--ink-2); font-family: var(--mono);
+    border-top: 1px solid var(--rule);
+  }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    .findings { grid-template-columns: 1fr; }
+    .conf-grid, .norm-grid, .map-wrap { grid-template-columns: 1fr; }
+    .map-side { border-left: none; border-top: 1px solid var(--rule); max-height: none; }
+    .pkg-grid { grid-template-columns: repeat(2, 1fr); }
+    .paths { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; }
+    aside.sidebar { position: static; height: auto; }
+    header.top { flex-direction: column; align-items: flex-start; padding: 18px 20px; }
+    section.s { padding: 32px 20px; }
+    #map { height: 400px; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+<link rel="stylesheet" href="dashboard-drawer.css?v=20260428l">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- =================== SIDEBAR =================== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="logo_AG.png" alt="AG Topografia e Construções" style="max-width:100%; height:auto; max-height:64px; display:block;">
+    </div>
+
+    <div class="nav-title">Navegação</div>
+    <nav class="snav" id="snav">
+      <a href="#s1"><span class="num">01</span><span>Sumário Executivo</span></a>
+      <a href="#s2"><span class="num">02</span><span>Mapa Interativo</span></a>
+      <a href="#s3"><span class="num">03</span><span>Cadeia Dominial</span></a>
+      <a href="#s4"><span class="num">04</span><span>Achados Geométricos</span></a>
+      <a href="#s5"><span class="num">05</span><span>Atos Saneadores α–ι</span></a>
+      <a href="#s6"><span class="num">06</span><span>Confrontantes</span></a>
+      <a href="#s7"><span class="num">07</span><span>Marco Normativo</span></a>
+      <a href="#s8"><span class="num">08</span><span>Resposta &amp; Status</span></a>
+    </nav>
+
+    <div class="side-meta">
+      <strong>Responsável Técnica</strong>
+      Aryanna Barbosa de Araújo Gonzaga<br>
+      Arquiteta e Urbanista<br>
+      <span style="font-family:var(--mono); font-size:11px;">CAU-PE A88.162-7</span>
+      <div class="countdown">
+        Nota 271/2026 · prazo<br>
+        <b id="cdLine">06/05/2026 — calculando…</b>
+      </div>
+    </div>
+  </aside>
+
+  <!-- =================== MAIN =================== -->
+  <main class="content">
+
+    <header class="top">
+      <div>
+        <h1>Caso Colarcoverde 2 / Mat. 31.973</h1>
+        <div class="case">RGI Arcoverde-PE 1º Ofício · CNM 073809.2.0031973-48</div>
+      </div>
+      <div class="meta-right">
+        <div class="pill">Dashboard técnico — 28/04/2026</div>
+        <div style="margin-top:6px;">Sistema: SIRGAS 2000 / UTM 24S (EPSG:31984)</div>
+        <div>Sob escopo CAU · Resolução CAU/BR 21/2012 + Lei 12.378/2010</div>
+      </div>
+    </header>
+
+    <!-- ============ SEÇÃO 1 — SUMÁRIO ============ -->
+    <section class="s" id="s1">
+      <div class="sec-eyebrow">Seção 01</div>
+      <h2>Sumário Executivo</h2>
+      <p class="sec-lede">
+        Visão consolidada da investigação técnica até 28/04/2026. Indicadores extraídos das fontes primárias auditáveis
+        — certidões de inteiro teor (Mat. 12.680, 31.973, 31.732), memorial certidão R01, Memorial R04, ART PE20251449791,
+        levantamento AG de campo (15/08/2025).
+      </p>
+
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Área registrada<br>Mat. 31.973 (R-1)</div>
+          <div class="value">87.090,25</div>
+          <div class="delta">m² · 32 vértices · per. 2.151,04 m</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Área pretendida<br>R04 / RT Bruno Macedo</div>
+          <div class="value">104.956,92</div>
+          <div class="delta">m² · 57 vértices · per. 2.018,86 m</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Acréscimo pretendido<br>(retificação)</div>
+          <div class="value">+17.866,67</div>
+          <div class="delta amber">m² · +20,55%</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Vértices fora da<br>tolerância NBR 17047 (24 cm)</div>
+          <div class="value">31 / 32</div>
+          <div class="delta neg">média 4,68 m · máx 19,08 m (V11)</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Confrontantes com<br>anuência no R05</div>
+          <div class="value">6</div>
+          <div class="delta">+ 1 pendente (Severino → Jayme)</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Atos saneadores<br>identificados (α–ι)</div>
+          <div class="value">9</div>
+          <div class="delta">4 AG · 3 Bruno · 2 Cliente</div>
+        </div>
+      </div>
+
+      <div class="tese">
+        <h4>Tese técnica central · 4 frentes investigativas</h4>
+        <p>
+          A descrição da Mat. 31.973 contém <strong>erro topológico declarado</strong>: a poligonal de 32 vértices,
+          embora aritmeticamente coerente com a cadeia 12.680 (AV-9 − Σ19 lotes = 87.090,25 m²),
+          atravessa geometricamente os mesmos Lotes 18 e 19 desmembrados pelo ato AV-10. O R04 corrige a topologia
+          contornando os lotes — enquadramento <strong>compatível com retificação registral</strong> via Provimento CNJ 195/2025
+          art. 440-AX e art. 440-AR §1º (autotutela), sob escopo CAU.
+        </p>
+        <p style="margin-top:14px;">
+          A tese sustenta-se em <strong>quatro frentes investigativas</strong> simultâneas, todas amparadas em fonte primária:
+          (i) erro topológico da R-1; (ii) auditoria dos confrontantes diretos do R04;
+          (iii) <strong>auditoria registral por triangulação documental</strong> — cadeia dominial em segundo grau de vizinhança, para
+          identificar conflitos não-aparentes na borda; (iv) <strong>caracterização da sobreposição do desmembramento</strong>
+          (Lotes 18 e 19 da AV-10) e do <strong>erro acumulado nas retificações sucessivas</strong> (R-1 → AV-10/AV-11..AV-29 → R04 → R05).
+        </p>
+      </div>
+
+      <div class="tese-frentes">
+        <div class="frente">
+          <span class="frente-num">II</span>
+          <h5>Confrontantes diretos do R04</h5>
+          <p>8 confrontantes nominados no memorial Bruno (N · L · S · O). Status de anuência: <span class="badge green">5 OK</span> <span class="badge amber">2 logradouro</span> <span class="badge red">1 pendente</span> (Severino → Jayme).</p>
+          <p class="frente-meta">Fonte: Memorial R04 13/02/2026 · R05 22/04/2026.</p>
+        </div>
+        <div class="frente">
+          <span class="frente-num">III</span>
+          <h5>Auditoria registral por triangulação documental</h5>
+          <p>Confronto cruzado da cadeia dominial em segundo grau de vizinhança: matrículas dos imóveis confrontantes aos confrontantes diretos do R04 (Iarlley → Mat. 22.406 origem; Cond. Olho D'Água → 13 unidades; Mat. 31.732 Colarcoverde 1 → confrontantes próprios). Objetivo: detectar sobreposições silenciosas e cláusulas de domínio em conflito.</p>
+          <p class="frente-meta">Auditoria já realizada pela AG · resultados consolidados em peça anexa (ato saneador η).</p>
+        </div>
+        <div class="frente">
+          <span class="frente-num">IV-a</span>
+          <h5>Sobreposição do desmembramento (AV-10)</h5>
+          <p>Os 19 lotes desmembrados em 11/06/1996 (AV-11 a AV-29) somam 21.419,50 m². Os Lotes 18 e 19 (1.876,55 m² conjuntos) estão <strong>geometricamente dentro</strong> da poligonal R-1 da Mat. 31.973 — origem do erro topológico. Recálculo Δ −0,032% confirma fidelidade dos lotes ao DXF Bruno.</p>
+          <p class="frente-meta">Fonte: DXF Bruno R05 (19 polígonos) · shoelace AG independente.</p>
+        </div>
+        <div class="frente">
+          <span class="frente-num">IV-b</span>
+          <h5>Erro acumulado nas retificações sucessivas</h5>
+          <p>Cadeia: <strong>Mat. 12.680 (AV-9: 108.509,75 m²)</strong> → AV-10 (−21.419,50 m² em 19 lotes) → R-1/Mat. 31.973 (87.090,25 m² declarado · 103.213,94 m² recalc · <strong>Δ +18,51 %</strong>) → R04 (104.956,92 m² declarado · 104.450,54 m² recalc · Δ −0,48 %) → R05 (área anuída). O erro mais grosseiro está concentrado na R-1; o R04 reduz o erro à precisão de campo.</p>
+          <p class="frente-meta">Compatibilidade R04↔(AV-9 − ΣAV-10): 104.957 vs 87.090 declarado, mas 104.451 vs 103.214 recalc → consistência geométrica dentro de 1,2 %.</p>
+        </div>
+      </div>
+
+      <div class="paths">
+        <div class="path adopted">
+          <span class="tag">Caminho A · adotado</span>
+          <h5>Defesa registral plena · Prov. CNJ 195/2025</h5>
+          <p>Resposta à Nota 271/2026 com fundamentação em art. 440-AX (retificação de área) + art. 440-AR §1º (autotutela do oficial em erro material). Tese técnica sustentada, não pretende mérito jurídico.</p>
+        </div>
+        <div class="path discarded">
+          <span class="tag">Caminho B · descartado</span>
+          <h5>Suscitação de dúvida · art. 198 LRP</h5>
+          <p>Antagoniza o tabelião antes do despacho administrativo. Cabível apenas em eventual indeferimento futuro.</p>
+        </div>
+        <div class="path discarded">
+          <span class="tag">Caminho C · descartado</span>
+          <h5>Comunicação preventiva ao MP-PE</h5>
+          <p>Provoca investigação patrimonial sobre o grupo Colorado em momento desnecessário. Não compõe estratégia da defesa registral.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SEÇÃO 2 — MAPA ============ -->
+    <section class="s" id="s2">
+      <div class="sec-eyebrow">Seção 02</div>
+      <h2>Mapa Interativo Principal</h2>
+      <p class="sec-lede">
+        Sobreposição georreferenciada das poligonais auditáveis em SIRGAS 2000 / UTM 24S, reprojetadas para EPSG:4326 via proj4js.
+        Coordenadas literais extraídas dos memoriais cartoriais. Toggles individuais por camada e basemap alternativo (OpenStreetMap / Esri Satellite).
+      </p>
+
+      <div class="map-wrap">
+        <div id="map" aria-label="Mapa principal — poligonais Mat. 31.973, R04, lotes desmembrados, KMZ Charles, cercas AG, marcadores de confrontantes (Mat. 31.732 disponível como camada opcional)"></div>
+        <div class="map-side">
+          <div class="basemap-toggle" role="tablist" aria-label="Basemap">
+            <button class="active" data-basemap="osm">OSM</button>
+            <button data-basemap="esri">Satélite Esri</button>
+          </div>
+          <h4>Camadas</h4>
+          <div id="layerControls"></div>
+          <h4 style="margin-top:14px;">Marcadores</h4>
+          <div id="markerLegend" style="font-size:11.5px; line-height:1.7;"></div>
+          <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--rule); font-size:10.5px; color:var(--ink-2); font-family:var(--mono);">
+            Centro · -8,421 / -37,078<br>
+            Proj.: SIRGAS 2000 / UTM 24S<br>
+            EPSG:31984 → EPSG:4326
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SEÇÃO 3 — CADEIA DOMINIAL ============ -->
+    <section class="s" id="s3">
+      <div class="sec-eyebrow">Seção 03</div>
+      <h2>Diagnóstico da Cadeia Dominial</h2>
+      <p class="sec-lede">Linha do tempo dos atos registrais e produtos técnicos relevantes. Clique em cada nó para expandir o detalhe.</p>
+
+      <div class="timeline" id="timeline"></div>
+    </section>
+
+    <!-- ============ SEÇÃO 4 — ACHADOS GEOMÉTRICOS ============ -->
+    <section class="s" id="s4">
+      <div class="sec-eyebrow">Seção 04</div>
+      <h2>Achados Geométricos</h2>
+      <p class="sec-lede">Quatro achados centrais da auditoria geométrica. Tese técnica, não diagnóstico jurídico. Linguagem: indicada, compatível com, sustentada por.</p>
+
+      <div class="findings" id="findings"></div>
+    </section>
+
+    <!-- ============ SEÇÃO 5 — ATOS SANEADORES ============ -->
+    <section class="s" id="s5">
+      <div class="sec-eyebrow">Seção 05</div>
+      <h2>Os 9 Atos Saneadores (α — ι)</h2>
+      <p class="sec-lede">
+        Atos pretendidos antes do despacho do tabelião. Filtro por executor responsável.
+      </p>
+
+      <div class="saneadores">
+        <div class="filter-bar">
+          <span class="lbl">Filtrar por executor:</span>
+          <button class="active" data-f="all">Todos</button>
+          <button data-f="AG">AG (escopo CAU)</button>
+          <button data-f="Bruno">Bruno (RT registral)</button>
+          <button data-f="Cliente">Cliente / assessoria</button>
+        </div>
+        <table class="acts" id="actsTable">
+          <thead>
+            <tr>
+              <th style="width:48px;">#</th>
+              <th>Ato saneador</th>
+              <th style="width:240px;">Fundamento</th>
+              <th style="width:160px;">Executor</th>
+              <th style="width:80px;"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <div class="ag-note">
+          <div class="ag-note-tag">Nota metodológica AG</div>
+          <div class="ag-note-body">
+            <p>
+              A análise espacial de sobreposições (atos <strong>γ</strong>, <strong>δ</strong>, <strong>ε</strong>, <strong>η</strong>) baseia-se na
+              comparação entre <em>polígonos georreferenciados</em> — não entre descrições tabulares de matrículas. O DXF da
+              31.973 (Bruno R05, SIRGAS 2000 / UTM 23S) foi superposto aos polígonos das matrículas vizinhas e da
+              parcela "Charles" para identificar interferências físicas reais no mesmo lugar do mundo.
+            </p>
+            <p>
+              Sobreposições <strong>não implicam fraude</strong>: são, em regra, sintoma de descrições antigas (tabulares,
+              por confrontantes) que, ao serem retroconvertidas em coordenadas, geram pequenas faixas de
+              indeterminação. A função do ato saneador <strong>η</strong> (acordo de divisas) é precisamente
+              <em>materializar em registro</em> o consenso já existente em campo, antes que a divergência cartográfica
+              se converta em litígio.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SEÇÃO 6 — CONFRONTANTES ============ -->
+    <section class="s" id="s6">
+      <div class="sec-eyebrow">Seção 06</div>
+      <h2>Confrontantes e Anuências</h2>
+      <p class="sec-lede">
+        Status de anuência declarado no R05 do Eng. Bruno Macedo (Fev/2026). Verde = anuência confirmada;
+        amarelo = pendente verificação documental; vermelho = sucessão dominial pendente.
+      </p>
+
+      <div class="conf-grid">
+        <div class="conf-list" id="confList"></div>
+        <div id="miniMapConf"></div>
+      </div>
+    </section>
+
+    <!-- ============ SEÇÃO 7 — MARCO NORMATIVO ============ -->
+    <section class="s" id="s7">
+      <div class="sec-eyebrow">Seção 07</div>
+      <h2>Marco Normativo Aplicável</h2>
+      <p class="sec-lede">Cadeia legislativa federal + atos do CNJ que sustentam o caminho de defesa registral, e normas técnicas aplicáveis à execução do laudo.</p>
+
+      <div class="norm-grid">
+        <div>
+          <h3 style="margin-bottom:8px;">Cadeia federal</h3>
+          <div class="norm-chain">
+            <div class="norm-step">
+              <div class="yr">1973</div>
+              <div class="nm">Lei 6.015 — Lei de Registros Públicos</div>
+              <div class="desc">art. 213 (retificação por requerimento) · §§ 2º, 3º, 4º</div>
+            </div>
+            <div class="norm-arrow">↓</div>
+            <div class="norm-step">
+              <div class="yr">2004</div>
+              <div class="nm">Lei 10.931</div>
+              <div class="desc">altera art. 213 LRP — moderniza retificação administrativa</div>
+            </div>
+            <div class="norm-arrow">↓</div>
+            <div class="norm-step">
+              <div class="yr">2022</div>
+              <div class="nm">Lei 14.382 — SERP</div>
+              <div class="desc">Sistema Eletrônico de Registros Públicos</div>
+            </div>
+            <div class="norm-arrow">↓</div>
+            <div class="norm-step">
+              <div class="yr">2023</div>
+              <div class="nm">Provimento CNJ 149/2023</div>
+              <div class="desc">CNN/CN/CNJ-Extra · base alterada pelo 195/25</div>
+            </div>
+            <div class="norm-arrow">↓</div>
+            <div class="norm-step highlight">
+              <div class="yr">2025 · vigente desde 03/09/2025</div>
+              <div class="nm">Provimento CNJ 195/2025</div>
+              <div class="desc"><b>art. 440-AX</b> — procedimento de retificação · <b>art. 440-AR §1º</b> — autotutela registral · art. 343-G (SIG-RI)</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="norm-aside">
+            <h3 style="margin-bottom:6px;">Normas técnicas (ABNT)</h3>
+            <ul>
+              <li><b>NBR 17047:2022</b> — Cadastro Territorial. <i>Itens 4.2 (sistema geodésico), 5.2 (materialização), <b>6.4.4</b> (tolerância 24 cm — urbano), <b>art. 7-d</b> (tratamento de erros topológicos — fundamento técnico central), 9.4 (Relatório Técnico).</i></li>
+              <li><b>NBR 13133:2021</b> — Execução de Levantamento Topográfico. <i>Item 5.5.1.2 (declaração obrigatória do sistema de referência).</i></li>
+              <li><b>NBR 14166:2022</b> — Rede Cadastral Municipal.</li>
+              <li><b>Resolução CAU/BR 21/2012 + Lei 12.378/2010</b> — base de competência da AG (topografia aplicada à Arquitetura e Urbanismo).</li>
+              <li><b>Decreto 5.334/2005</b> + <b>Resolução PR-IBGE 1/2015</b> — SIRGAS 2000 obrigatório desde 25/02/2015.</li>
+            </ul>
+          </div>
+          <div class="alert-defasagem">
+            <b>⚠ Alerta normativo regional</b><br>
+            CNSNR/PE — <b>Provimento 11/2023-CGJ</b> não foi adaptado ao Provimento CNJ 195/2025 (defasagem de 7 meses na data deste dashboard). O caminho de defesa apoia-se no provimento federal, hierarquicamente superior.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SEÇÃO 8 — RESPOSTA À NOTA 271 ============ -->
+    <section class="s" id="s8">
+      <div class="sec-eyebrow">Seção 08</div>
+      <h2>Resposta à Nota 271/2026 — Status</h2>
+      <p class="sec-lede">
+        Vencimento <b>06/05/2026</b>. Visão executiva do que está pronto, do que precisa ser
+        atualizado em função do achado SAD69 (28/04) e do que ainda precisa ser produzido.
+      </p>
+
+      <div class="status-grid">
+
+        <!-- Coluna 1 — Pronto -->
+        <div class="status-col col-ok">
+          <div class="status-head">
+            <span class="status-pill ok">PRONTO</span>
+            <h3>Já produzido e calibrado</h3>
+            <p class="status-sub">Peças que entram na resposta sem retrabalho.</p>
+          </div>
+          <div class="status-list" id="statusPronto"></div>
+        </div>
+
+        <!-- Coluna 2 — Atualizar -->
+        <div class="status-col col-upd">
+          <div class="status-head">
+            <span class="status-pill upd">ATUALIZAR</span>
+            <h3>Precisa de revisão</h3>
+            <p class="status-sub">Peças existentes impactadas pelo achado SAD69 / lotes / poligonal anterior R-1.</p>
+          </div>
+          <div class="status-list" id="statusAtualizar"></div>
+        </div>
+
+        <!-- Coluna 3 — Produzir -->
+        <div class="status-col col-todo">
+          <div class="status-head">
+            <span class="status-pill todo">A PRODUZIR</span>
+            <h3>Pendente de execução</h3>
+            <p class="status-sub">Atos saneadores e peças que ainda não foram materializados.</p>
+          </div>
+          <div class="status-list" id="statusProduzir"></div>
+        </div>
+
+      </div>
+
+      <div class="calib-box">
+        <h4>Calibração técnica · risco de viés de confirmação</h4>
+        <p>
+          O enquadramento como retificação registral é a <strong>tese técnica sustentada</strong> pela investigação,
+          não fato comprovado. A AG é a <strong>autoridade técnica autônoma</strong> do procedimento, sob escopo CAU
+          (Resolução CAU/BR 21/2012 + Lei 12.378/2010). Toda afirmação está lastreada em fonte primária auditável —
+          certidões de inteiro teor, memoriais, ART, levantamento de campo, recálculos por shoelace independente.
+          O risco do art. 299 do Código Penal (falsidade ideológica) é mitigado pela hierarquia documental e pela
+          linguagem calibrada deste dashboard: <i>indicada, pretendida, compatível com, hipótese sustentada</i> — sem afirmações
+          de comprovação, definitividade ou irrefutabilidade do mérito.
+        </p>
+      </div>
+    </section>
+
+    <footer class="foot">
+      Dashboard técnico · Caso Colarcoverde 2 / Mat. 31.973 · 28/04/2026 · sob responsabilidade técnica CAU-PE A88.162-7 ·
+      AG Topografia e Construções · CNPJ 16.841.054/0001-10 · Recife-PE
+    </footer>
+
+  </main>
+</div>
+
+<!-- ============== DATA / SCRIPT ============== -->
+<script src="dashboard-data.js?v=20260428x"></script>
+<script src="dashboard-app.js?v=20260428x"></script>
+<script src="dashboard-drawer.js?v=20260428x"></script>
+</body>
+</html>
